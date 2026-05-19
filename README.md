@@ -1,7 +1,7 @@
-<div align="center">
+﻿<div align="center">
 
 # 🎰 Neon Stakes
-**Studi Kasus Edukasi: Simulator Perjudian, Pola Gelap UI/UX, & Sistem Transaksional Konkurensi Tinggi**
+**Studi Kasus Edukasi: Simulator Betting, UI/UX 'Dark Patterns', & Concurrency System**
 
 ![Next.js](https://img.shields.io/badge/Next.js-black?style=for-the-badge&logo=next.js)
 ![Golang](https://img.shields.io/badge/Golang-00ADD8?style=for-the-badge&logo=go)
@@ -15,31 +15,31 @@
 <br/>
 
 > ⚠️ **PERINGATAN EDUKASI & DISCLAIMER**
-> Proyek ini dikembangkan secara **eksklusif untuk tujuan edukasi dan riset perangkat lunak**. **TIDAK ADA** transaksi uang sungguhan, gerbang pembayaran, atau nilai ekonomi nyata dalam sistem ini. Semua saldo bersifat simulasi. *Neon Stakes* dirancang sebagai sarana pembelajaran untuk memahami rekayasa perangkat lunak sistem transaksional yang aman, teori probabilitas, dan analisis psikologis dari *Dark Patterns* (Pola Gelap) pada UI/UX.
+> Project ini dibuat murni **untuk tujuan riset dan edukasi software engineering**. **TIDAK ADA** transaksi uang asli, payment gateway, maupun nilai ekonomi beneran di sini. Semua balance (saldo) cuma simulasi. *Neon Stakes* ini dibuat buat ngebedah cara kerja sistem transaksional yang aman (concurrency), teori probabilitas dasar, dan ngebahas soal *Dark Patterns* (trik psikologis UI/UX) yang sering dipakai di aplikasi serupa.
 
 ---
 
-## 📸 Pratinjau Visual (UI/UX)
+## 📸 Tampilan UI
 
-| Autentikasi & Registrasi | Dasbor Pemain (Lobby) |
+| Login & Register | Player Dashboard |
 |:---:|:---:|
-| <img src="./public/login-page.png" alt="Landing & Registration" width="400"/> | <img src="./public/dashboard.png" alt="Player Dashboard" width="400"/> |
+| <img src="./public/src/login-page.png" alt="Login Page" width="400"/> | <img src="./public/src/dashboard.png" alt="Player Dashboard" width="400"/> |
 
-| Antarmuka Mesin Slot | Ruang Kontrol Admin (Eksposur Finansial) |
+| Tampilan Slot Machine | Ruang Kontrol Admin |
 |:---:|:---:|
-| <img src="./public/slot-machine.png" alt="Slot Machine Interface" width="400"/> | <img src="./public/admin-dashboard.png" alt="Admin Control Room" width="400"/> |
+| <img src="./public/src/slot-machine.png" alt="Slot Machine" width="400"/> | <img src="./public/src/admin-dashboard.png" alt="Admin Dashboard" width="400"/> |
 
 ---
 
 ## 🏗️ Arsitektur Sistem
 
-Proyek ini dibangun dengan mendokumentasikan paradigma **"Zero Client Trust"** (Kepercayaan Klien Nol). Dalam aplikasi taruhan atau finansial, antarmuka klien (Frontend) tidak boleh memiliki otoritas untuk menentukan hasil perhitungan, status menang/kalah, atau memanipulasi saldo.
+Konsep utama di arsitektur ini adalah **"Zero Client Trust"**. Di aplikasi keuangan atau betting apapun, frontend / sisi client sama sekali nggak boleh punya akses buat nentuin hasil, menang/kalah, atau apalagi ngedit saldo.
 
-```mermaid
+`mermaid
 graph TD
     Client[Next.js Client] -.->|HTTP POST /api/spin| Gateway(API Gateway)
     
-    subgraph "Server Tertutup (Go & PostgreSQL)"
+    subgraph "Backend Tertutup (Go & PostgreSQL)"
         Gateway --> Auth[Middleware RBAC]
         Auth --> RNG[Engine PRNG (Golang)]
         RNG --> Ledger[Sistem Transaksi]
@@ -47,7 +47,7 @@ graph TD
     end
     
     DB -->|State Baru| Ledger
-    Ledger -->|Hasil Spin + Delta Saldo| Client
+    Ledger -->|Hasil Spin + Update Saldo| Client
     
     style Client fill:#2d3748,stroke:#4a5568,color:#fff
     style Gateway fill:#2b6cb0,stroke:#2c5282,color:#fff
@@ -55,42 +55,42 @@ graph TD
     style RNG fill:#805ad5,stroke:#553c9a,color:#fff
     style Ledger fill:#c53030,stroke:#9b2c2c,color:#fff
     style DB fill:#2f855a,stroke:#276749,color:#fff
-```
+`
 
-**Siklus Hidup Permainan:**
-1. Frontend murni hanya menangani *determinasi animasi* (seperti efek putaran roda berdasar respons dari server).
-2. Backend (Go) memegang **otoritas absolut** atas mutasi *state* dan penghasil bilangan acak buatan (PRNG).
+**Alur Permainan:**
+1. Frontend murni cuma ngerender *animasi* (kayak efek roda berputar) berdasarkan respons JSON dari server.
+2. Backend (Go) jadi pemegang **otoritas mutlak** buat nge-generate angka acak (PRNG) dan update *state* dompet di database.
 
 ---
 
-## 🚀 Sorotan Teknis Inti
+## 🚀 Sorotan Teknis
 
-### 1. Integritas Database (Race Condition Mitigation)
-Untuk mencegah *double-spending* (saldo digunakan untuk beberapa spin serentak), sistem menggunakan **Pessimistic Locking** (`SELECT ... FOR UPDATE`) dalam batas *Database Transaction*.
-Jika `Player A` mengklik tombol putar dua kali dalam jeda 5ms, transaksi pertama akan mengunci baris dompet, sehingga transaksi kedua harus menunggu hingga yang pertama selesai dan memperbarui sisa saldo.
+### 1. Menjaga Integritas Data (Mencegah Race Condition)
+Biar user nggak bisa nge-bug sistem dengan *double-spending* (misal klik tombol spin cepat-cepat pakai script), kita implementasiin **Pessimistic Locking** (SELECT ... FOR UPDATE) di level database transaction.
+Jadi kalau ada dua request berbarengan di jeda beberapa milidetik, transaksi kedua bakal dipaksa nunggu transaksi pertama kelar ngurangin saldo, baru dia bisa jalan. Nggak bakal ada saldo minus atau ke-spin gratis.
 
-### 2. Logika Matematis (The House Edge)
-Algoritma simulasi peluang ini dirancang menghasilkan **RTP (Return to Player) sebesar 96.5%** yang setara dengan **House Edge 3.5%**. 
+### 2. Logika Matematika (The House Edge)
+Algoritma peluang di sini di-setting buat ngasilin **RTP (Return to Player) 96.5%**, yang artinya *House Edge* atau jatah untungnya sistem ada di **3.5%**.
 
-$$ \text{RTP} = \left( \frac{\text{Total Hadiah yang Dikembalikan}}{\text{Total Taruhan yang Masuk}} \right) \times 100\% $$
+} \text{RTP} = \left( \frac{\text{Total Hadiah (Payout)}}{\text{Total Taruhan (Bet)}} \right) \times 100\% }
 
-Sistem tidak mengandalkan "pengaturan manual jika bandar rugi". Margin keuntungan bandar sudah tertanam secara *hard-coded* melalui rasio bobot probabilitas (Weighted PRNG) dari simbol dan *paylines*.
+Sistem nggak perlu di-setting manual atau "dicurangi" kalau lagi rugi. Margin keuntungan ini udah ke-lock secara matematis pakai *Weighted PRNG* dari pembobotan simbol dan paylines yang ada.
 
-### 3. Mesin Gamifikasi Psikologis (Dark Patterns)
-- **Near-Miss Algorithm**: Saat sistem menetapkan pemain kalah (`Lose`), ada kemungkinan **30%** bahwa UI akan diinstruksikan merender "nyaris menang" (misal: dua simbol Jackpot sejajar, dengan simbol ketiga terpeleset satu slot). Secara matematis ini adalah kekalahan 100%, tetapi secara psikologis merangsang dopamin dan retensi perputaran pemain.
-- **Sensory Overload**: Penggunaan partikel kemenangan (Framer Motion) dan transisi suara secara berlebihan walau untuk kemenangan mikroskopis (menang lebih kecil dari nilai taruhan).
+### 3. Sisi Psikologis (UI/UX Dark Patterns)
+- **Algoritma "Near-Miss"**: Waktu sistem udah nentuin kalau player bakal kalah, ada probabilitas **30%** UI bakal nampilin efek "nyaris menang" (misal: dua simbol Jackpot udah pas, eh simbol ketiganya kelewat satu kotak doang). Di realitanya ini tetap kalah telak, tapi efek visual ini didesain buat ngakalin psikologis (dopamin) biar player penasaran dan nge-spin lagi.
+- **Sensory Overload**: Kita pakai animasi partikel (Framer Motion) dan efek suara yang heboh, padahal kadang player cuma menang receh (dapatnya lebih kecil dari modal spin).
 
 ### 4. Role-Based Access Control (RBAC)
-Sistem memisahkan akses via *Claims* dari JWT, mengarahkan antara rute `<PlayerLobby>` dan `<AdminDashboard>`. Admin secara instan dapat melihat eksposur finansial (Total Rake, RTP riil harian, dan GGR - *Gross Gaming Revenue*).
+Ada pemisahan *Role* jelas via JWT. Player biasa cuma bisa masuk ke <PlayerLobby>, sedangkan akun spesifik bisa akses <AdminDashboard> buat mantau *financial exposure* (Total keuntungan bandar, RTP harian secara *real-time*, dan flow saldo masuk).
 
 ---
 
 ## 🗄️ Skema Database
 
-Implementasi dasar pada **PostgreSQL**:
+Struktur inti di **PostgreSQL**:
 
-```sql
--- TABEL PENGGUNA
+`sql
+-- TABEL USERS
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -98,7 +98,7 @@ CREATE TABLE users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- TABEL DOMPET (WALLET)
+-- TABEL WALLET (DOMPET)
 CREATE TABLE wallets (
     user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     balance DECIMAL(15, 2) NOT NULL DEFAULT 1000.00,
@@ -106,70 +106,71 @@ CREATE TABLE wallets (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- TABEL CATATAN TARUHAN (BET LOGS)
+-- TABEL HISTORY TARUHAN (BET LOGS)
 CREATE TABLE bet_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id),
     bet_amount DECIMAL(15, 2) NOT NULL,
     payout_amount DECIMAL(15, 2) NOT NULL,
-    result_pattern JSONB NOT NULL, -- Menyimpan status array/posisi simbol
+    result_pattern JSONB NOT NULL, -- Nyimpen posisi simbol waktu berhenti
     is_near_miss BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-```
+`
 
 ---
 
-## 🛠️ Panduan Instalasi & Eksekusi
+## 🛠️ Cara Setup & Run Project
 
-### 1. Menjalankan Backend (Golang)
-Backend menangani logika enkripsi JWT, RTP RNG, dan interaksi Database.
-```bash
+### 1. Backend (Golang)
+Backend ini yang ngurus logika JWT, peluang (RTP), RNG, dan koneksi ke database.
+`ash
 cd server
-# Salin konfigurasi environment
+# Copy template .env
 cp .env.example .env
-# Isi string koneksi Supabase Pooler di .env (contoh: DATABASE_URL=postgres://...)
+# Isi string koneksi Supabase/PostgreSQL kamu di .env
 
-# Install dependensi module
+# Download module
 go mod tidy
 
 # Jalankan server lokal
 go run main.go
-```
-*Pastikan daemon database Anda (PostgreSQL/Supabase) aktif.*
+`
+*(Jangan lupa pastiin database PostgreSQL/Supabase kamu udah nyala dan bisa diakses)*
 
-### 2. Menjalankan Frontend (Next.js)
-Frontend dikembangkan dengan Next.js App Router dan antarmuka berbasis Tailwind CSS.
-```bash
+### 2. Frontend (Next.js)
+Frontend pakai Next.js App Router dan di-styling pakai Tailwind CSS.
+`ash
 cd client
-# Instal seluruh paket NPM
+# Install dependencies
 npm install
 
-# Jalankan development server
+# Jalankan dev server
 npm run dev
-# Atau khusus Windows dev (menggunakan PowerShell script bawaan)
+# Kalau pakai Windows, bisa pakai script ini juga:
 ./dev-server.ps1
-```
-Buka `http://localhost:3000` di peramban Anda.
+`
+Tinggal buka http://localhost:3000 di browser.
 
 ---
 
-## 📊 Insight Edukasi: Varians & Hukum Bilangan Besar
+## 📊 Insight Edukasi: Volatilitas vs Hukum Bilangan Besar
 
-Banyak insinyur pemula yang berekspektasi bahwa bandar (The House) akan selalu "menang di setiap detiknya". Fakta matematisnya berpusat pada **Hukum Bilangan Besar (The Law of Large Numbers)**.
+Banyak yang mikir kalau jadi bandar itu "pasti untung detik itu juga". Realitas secara matematika berpusat pada **Hukum Bilangan Besar (The Law of Large Numbers)**.
 
-**Mengapa Kasino Bisa Rugi Jangka Pendek?**
-Dalam ukuran sampel kecil (~100 putaran beruntun), **Varians** memegang kendali penuh. Seorang pemain bisa mendapatkan *Jackpot* dengan taruhan pertama mereka, menyebabkan *House Profit* berubah tajam menjadi negatif.
+**Kenapa bandar bisa rugi di jangka pendek?**
+Kalau data sampelnya masih dikit (misal baru ada ~100 spin), efek **Volatilitas / Varians** itu gede banget. Bisa aja ada player yang baru main sekali langsung kena jackpot, bikin diagram *profit* sistem langsung anjlok jadi minus.
 
-**Kepastian Jangka Panjang**
-Jika sampel dilebarkan hingga jutaan putaran pemain serentak (High-Concurrency):
-$$ P(E) \rightarrow \text{True Mathematical Probability} $$
-Volatilitas harian akan teredam dan rata-rata bersih (Net Margin) akan selalu tertarik mendekati **+3.5%**. 
-Itulah mengapa fokus utama dari simulasi kasino skala besar bukanlah pada *mengakali* hasil 1-2 pemain, namun **merekayasa sistem agar tahan melayani ribuan RPS (Requests Per Second) tanpa satupun data dompet terkorupsi (Zero Race Conditions).**
+**Kepastian di Jangka Panjang**
+Tapi, kalau skala pelayanannya udah jutaan putaran dari banyak pemain berbarengan, probabilitas riilnya bakal nyaru ke angka teori:
+} P(E) \rightarrow \text{True Mathematical Probability} }
+Volatilitas harian ini lama-lama bakal ketutup, dan ujung-ujungnya rata-rata keuntungan sistem (*Net Margin*) bakal selalu tertarik mendekat ke angka pasti **+3.5%**.
+
+Makanya, tantangan utama bikin sistem kayak gini tuh bukan pusing gimana cari cara ngakalin hasil per satu pemain, tapi **gimana caranya ngebangun backend yang kuat nerima ribuan request per detik (RPS) tanpa ada satupun data transaksi atau saldo dompet yang bocor**, apalagi nembus jadi saldo minus (*Zero Race Conditions*).
 
 <br/>
 
 ---
 <div align="center">
-  <sub>Dibangun dengan dedikasi rekayasa oleh tim Neon Stakes.</sub>
+  <sub>Dibangun untuk studi kasus engineering oleh tim Neon Stakes.</sub>
 </div>
