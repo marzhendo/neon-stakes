@@ -2,6 +2,14 @@
 
 import { FormEvent, useState } from "react";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+
+type LoginPayload = {
+  user_id?: string;
+  username?: string;
+  role?: string;
+  error?: string;
+};
 
 const jackpotItems = [
   "User Budi99 won Rp 50.000.000!",
@@ -17,14 +25,54 @@ const providers = {
 };
 
 export default function Home() {
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [loginError, setLoginError] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const router = useRouter();
 
-  function handleRegister(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    // Registration is deliberately frictionless for the dark-pattern study,
-    // but this client never creates balance, odds, or outcomes. The backend
-    // will become the only source of truth in later phases.
-    setSubmitted(true);
+    const formData = new FormData(event.currentTarget);
+    await login(
+      String(formData.get("username") ?? ""),
+      String(formData.get("password") ?? ""),
+    );
+  }
+
+  async function login(username: string, password: string) {
+    setIsLoggingIn(true);
+    setLoginError("");
+
+    try {
+      const response = await fetch("http://localhost:8080/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+      });
+      const payload = (await response.json()) as LoginPayload;
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Login failed");
+      }
+
+      localStorage.setItem(
+        "neon_stakes_user",
+        JSON.stringify({
+          userId: payload.user_id,
+          username: payload.username,
+          role: payload.role,
+        }),
+      );
+
+      setSubmitted(true);
+      router.push(payload.role === "admin" ? "/admin" : "/dashboard");
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : "Unable to login");
+    } finally {
+      setIsLoggingIn(false);
+    }
   }
 
   return (
@@ -42,7 +90,7 @@ export default function Home() {
                       ? "bg-gold-300/10 text-gold-100 shadow-[inset_0_-2px_0_#facc15]"
                       : ""
                   }`}
-                  href="#registration"
+                  href="#login"
                   key={item}
                 >
                   {item}
@@ -55,12 +103,15 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button className="hidden rounded-md border border-white/25 bg-white/10 px-7 py-2 font-display text-sm uppercase text-white shadow-inner shadow-white/10 transition hover:border-gold-200 hover:text-gold-100 sm:block">
+            <a
+              className="hidden rounded-md border border-white/25 bg-white/10 px-7 py-2 font-display text-sm uppercase text-white shadow-inner shadow-white/10 transition hover:border-gold-200 hover:text-gold-100 sm:block"
+              href="#login"
+            >
               Login
-            </button>
+            </a>
             <a
               className="rounded-md bg-gold-cta px-7 py-2 font-display text-sm uppercase text-[#332300] shadow-[0_0_24px_rgba(250,204,21,0.55)] transition hover:scale-[1.02]"
-              href="#registration"
+              href="#login"
             >
               Join Now
             </a>
@@ -105,7 +156,7 @@ export default function Home() {
               transition={{ duration: 1.4, repeat: Infinity, repeatType: "reverse" }}
             >
               <span className="grid size-7 place-items-center rounded-full border border-gold-200/70">
-                ⏱
+                08
               </span>
               <span>
                 Promo Ends In
@@ -114,17 +165,16 @@ export default function Home() {
             </motion.div>
           </motion.div>
 
-          <RegistrationCard submitted={submitted} onSubmit={handleRegister} />
+          <LoginCard
+            error={loginError}
+            isLoading={isLoggingIn}
+            submitted={submitted}
+            onSubmit={handleSubmit}
+          />
         </div>
       </section>
 
       <ProviderStrip />
-      <button
-        aria-label="Back to top"
-        className="fixed bottom-4 right-4 z-30 grid size-12 place-items-center rounded-full bg-red-700 text-2xl text-white shadow-[0_0_22px_rgba(220,38,38,0.55)]"
-      >
-        ↑
-      </button>
     </main>
   );
 }
@@ -164,7 +214,6 @@ function CasinoHost() {
       transition={{ duration: 0.7, ease: "easeOut" }}
     >
       <div className="absolute bottom-5 left-3 h-28 w-72 rounded-full bg-gold-300/35 blur-3xl" />
-      <div className="absolute bottom-5 left-12 h-28 w-52 rounded-[50%] bg-gold-200/30 blur-xl" />
       <div className="absolute bottom-0 left-10 flex h-44 w-56 items-end justify-center gap-2">
         {Array.from({ length: 9 }).map((_, index) => (
           <div
@@ -177,11 +226,6 @@ function CasinoHost() {
       <div className="absolute left-20 top-24 h-52 w-40 rounded-t-[4rem] bg-[linear-gradient(160deg,#fff2ce,#f0b95b_42%,#111827_43%,#05070a)] shadow-[0_0_30px_rgba(250,204,21,0.35)]" />
       <div className="absolute left-[112px] top-14 h-24 w-24 rounded-full border-4 border-[#3a1f16] bg-[linear-gradient(145deg,#ffd8b0,#b96d48)] shadow-[0_0_28px_rgba(250,204,21,0.4)]" />
       <div className="absolute left-[96px] top-4 h-24 w-32 rounded-[50%_50%_42%_42%] bg-[linear-gradient(145deg,#5b2c17,#1f120d)]" />
-      <div className="absolute left-[118px] top-[88px] flex gap-8">
-        <span className="size-2 rounded-full bg-[#2b160e]" />
-        <span className="size-2 rounded-full bg-[#2b160e]" />
-      </div>
-      <div className="absolute left-[135px] top-[119px] h-2 w-8 rounded-full bg-[#743928]" />
       <div className="absolute left-[58px] top-[188px] flex -rotate-12 gap-1">
         {["A", "A", "A", "A"].map((card, index) => (
           <div
@@ -211,37 +255,34 @@ function CasinoHost() {
   );
 }
 
-function RegistrationCard({
+function LoginCard({
+  error,
+  isLoading,
   submitted,
   onSubmit,
 }: {
+  error: string;
+  isLoading: boolean;
   submitted: boolean;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   const fields = [
-    { label: "Username", placeholder: "Enter your ID", type: "text", icon: "♟" },
-    { label: "Password", placeholder: "••••••••", type: "password", icon: "🔒" },
-    {
-      label: "Konfirmasi Password",
-      placeholder: "••••••••",
-      type: "password",
-      icon: "🔒",
-    },
-    { label: "Nomor Telepon", placeholder: "Nomor Telepon", type: "tel", icon: "☎" },
+    { label: "Username", name: "username", placeholder: "asep_gacor", type: "text", icon: "ID" },
+    { label: "Password", name: "password", placeholder: "password123", type: "password", icon: "PW" },
   ];
 
   return (
     <motion.form
       animate={{ opacity: 1, x: 0 }}
       className="relative mx-auto w-full max-w-[322px] overflow-hidden rounded-lg border border-gold-200/70 bg-black/50 p-5 shadow-[0_0_30px_rgba(250,204,21,0.34),inset_0_0_36px_rgba(255,255,255,0.06)] backdrop-blur-xl"
-      id="registration"
+      id="login"
       initial={{ opacity: 0, x: 24 }}
       onSubmit={onSubmit}
       transition={{ duration: 0.65, ease: "easeOut", delay: 0.15 }}
     >
       <div className="pointer-events-none absolute -right-12 -top-12 h-56 w-28 rotate-12 bg-white/20 blur-sm" />
       <h2 className="relative mb-5 text-center font-mono text-sm font-bold uppercase tracking-[0.2em] text-gold-100">
-        Secure Registration
+        Secure Login
       </h2>
 
       <div className="relative space-y-3">
@@ -251,9 +292,12 @@ function RegistrationCard({
               {field.label}
             </span>
             <span className="mt-1 flex h-9 items-center border-b border-gold-200/80 bg-white/[0.07] px-3 text-sm shadow-inner shadow-black/40 focus-within:border-purple-neon focus-within:shadow-[0_8px_22px_rgba(168,85,247,0.26)]">
-              <span className="mr-2 text-gold-100/90">{field.icon}</span>
+              <span className="mr-2 text-[10px] font-bold text-gold-100/90">
+                {field.icon}
+              </span>
               <input
                 className="h-full w-full bg-transparent text-sm text-white outline-none placeholder:text-zinc-400"
+                name={field.name}
                 placeholder={field.placeholder}
                 required
                 type={field.type}
@@ -264,21 +308,26 @@ function RegistrationCard({
       </div>
 
       <motion.button
-        className="relative mt-5 w-full rounded-md bg-gold-cta px-4 py-4 font-display text-2xl uppercase text-[#3a2a00] shadow-[0_0_25px_rgba(250,204,21,0.7)]"
+        className="relative mt-5 w-full rounded-md bg-gold-cta px-4 py-4 font-display text-2xl uppercase text-[#3a2a00] shadow-[0_0_25px_rgba(250,204,21,0.7)] disabled:cursor-not-allowed disabled:opacity-70"
+        disabled={isLoading}
         type="submit"
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
+        whileHover={{ scale: isLoading ? 1 : 1.02 }}
+        whileTap={{ scale: isLoading ? 1 : 0.98 }}
       >
-        Daftar Sekarang
+        {isLoading ? "Memproses..." : "Daftar Sekarang"}
       </motion.button>
 
       <div
         aria-live="polite"
-        className={`mt-3 h-5 text-center font-mono text-xs uppercase tracking-widest text-green-neon transition-opacity ${
-          submitted ? "opacity-100" : "opacity-0"
+        className={`mt-3 min-h-5 text-center font-mono text-xs uppercase tracking-widest transition-opacity ${
+          error
+            ? "text-red-300 opacity-100"
+            : submitted
+              ? "text-green-neon opacity-100"
+              : "text-green-neon opacity-0"
         }`}
       >
-        Registration queued
+        {error || "Login accepted"}
       </div>
     </motion.form>
   );

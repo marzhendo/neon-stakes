@@ -1,3 +1,6 @@
 plan.md
 implementation.md
 rules.md
+
+/server/.env
+/server/.env.local
